@@ -28,6 +28,16 @@ func SetupRouter(mode string) *gin.Engine {
 		})
 	})
 
+	// 节点管理
+	serverNodeGroup := r.Group("/server/node")
+	{
+		serverNodeGroup.POST("", controller.AddServerNode)          // 新增
+		serverNodeGroup.GET("", controller.GetServerNodes)          // 获取
+		serverNodeGroup.PUT("", controller.UpdateServerNode)        // 更新
+		serverNodeGroup.DELETE("/:id", controller.DeleteServerNode) // 删除
+	}
+	r.GET("/server/nodes", controller.GetNameServerNodes)
+
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"msg": "404",

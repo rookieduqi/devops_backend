@@ -14,3 +14,16 @@ type ParamLogin struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
+
+type ServerNode struct {
+	ID         int    `db:"id" json:"id"`
+	Name       string `db:"name" json:"name" binding:"required"`
+	Host       string `db:"host" json:"host" binding:"required"`
+	Port       string `db:"port" json:"port"`
+	Account    string `db:"account" json:"account" binding:"required"`
+	Password   string `db:"password" json:"password" binding:"required"`
+	Status     bool   `db:"status" json:"status"`
+	Remark     string `db:"remark" json:"remark"`
+	CreateTime string `db:"create_time" json:"create_time"`
+	UpdateTime string `db:"update_time" json:"update_time"`
+}

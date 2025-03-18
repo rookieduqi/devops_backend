@@ -12,6 +12,10 @@ const (
 
 	CodeNeedLogin
 	CodeInvalidToken
+	CodeInvalidNode
+	CodeInvalidUpdateNode
+	CodeInvalidDeleteNode
+	CodeInvalidGetNode
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -22,8 +26,12 @@ var codeMsgMap = map[ResCode]string{
 	CodeInvalidPassword: "用户名或密码错误",
 	CodeServerBusy:      "服务繁忙",
 
-	CodeNeedLogin:    "需要登录",
-	CodeInvalidToken: "无效的token",
+	CodeNeedLogin:         "需要登录",
+	CodeInvalidToken:      "无效的token",
+	CodeInvalidGetNode:    "获取node失败",
+	CodeInvalidNode:       "添加node失败",
+	CodeInvalidUpdateNode: "编辑node失败",
+	CodeInvalidDeleteNode: "删除node失败",
 }
 
 func (c ResCode) Msg() string {
