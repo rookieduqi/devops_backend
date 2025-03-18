@@ -1,0 +1,42 @@
+CREATE TABLE user (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id INTEGER NOT NULL,
+                      username TEXT NOT NULL UNIQUE,
+                      password TEXT NOT NULL,
+                      email TEXT,
+                      gender INTEGER NOT NULL DEFAULT 0,
+                      create_time TEXT DEFAULT (datetime('now', 'localtime')),
+                      update_time TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 创建触发器以实现 `update_time` 的自动更新时间
+CREATE TRIGGER update_user_time
+    AFTER UPDATE ON user
+    FOR EACH ROW
+BEGIN
+    UPDATE user SET update_time = datetime('now', 'localtime') WHERE id = OLD.id;
+END;
+
+
+CREATE TABLE server_nodes (
+                              id INTEGER PRIMARY KEY AUTOINCREMENT,
+                              name TEXT NOT NULL,
+                              host TEXT NOT NULL,
+                              port TEXT NOT NULL,
+                              account TEXT NOT NULL,
+                              password TEXT NOT NULL,
+                              status BOOLEAN NOT NULL,
+                              remark TEXT,
+                              create_time TEXT DEFAULT (datetime('now', 'localtime')),
+                              update_time TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 创建触发器以实现 `update_time` 字段自动更新时间
+CREATE TRIGGER update_server_nodes_time
+    AFTER UPDATE ON server_nodes
+    FOR EACH ROW
+BEGIN
+    UPDATE server_nodes
+    SET update_time = datetime('now', 'localtime')
+    WHERE id = OLD.id;
+END;
