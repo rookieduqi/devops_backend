@@ -36,7 +36,17 @@ func GetNameServerNodes(c *gin.Context) {
 
 // GetServerNodes 获取所有节点
 func GetServerNodes(c *gin.Context) {
-	nodes, err := logic.GetAllNodes()
+	name := c.Query("name") // 获取查询参数
+	if name == "" {
+		nodes, err := logic.GetAllNodes()
+		if err != nil {
+			ResponseError(c, CodeInvalidGetNode)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "查询成功", "success": true, "data": nodes})
+		return
+	}
+	nodes, err := logic.GetServerNodes(name)
 	if err != nil {
 		ResponseError(c, CodeInvalidGetNode)
 		return

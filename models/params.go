@@ -27,3 +27,14 @@ type ServerNode struct {
 	CreateTime string `db:"create_time" json:"create_time"`
 	UpdateTime string `db:"update_time" json:"update_time"`
 }
+
+type NodeView struct {
+	ID           string `db:"id" json:"id"`
+	NodeID       string `db:"node_id" json:"node_id"`
+	Weather      string `db:"weather" json:"weather"`
+	Name         string `db:"name" json:"name"`
+	LastSuccess  string `db:"last_success" json:"lastSuccess,omitempty"`
+	LastFailure  string `db:"last_failure" json:"lastFailure,omitempty"`
+	LastDuration string `db:"last_duration" json:"lastDuration,omitempty"`
+	CreateTime   string `db:"create_time" json:"createTime,omitempty"`
+}
