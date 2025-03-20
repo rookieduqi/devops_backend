@@ -40,10 +40,20 @@ func SetupRouter(mode string) *gin.Engine {
 
 	serverNodeGroup = r.Group("/server/node_view")
 	{
-		serverNodeGroup.GET("/:node_id/view", controller.GetNodeViews)               // 获取节点视图 (Mock 数据)
-		serverNodeGroup.POST("/:node_id/view", controller.AddNodeView)               // 添加节点视图 (Mock 数据)
-		serverNodeGroup.PUT("/:node_id/view/:view_id", controller.UpdateNodeView)    // 更新节点视图 (Mock 数据)
-		serverNodeGroup.DELETE("/:node_id/view/:view_id", controller.DeleteNodeView) // 删除节点视图 (Mock 数据)
+		serverNodeGroup.POST("/get/view", controller.GetNodeViews)
+		//serverNodeGroup.POST("/:node_id/view", controller.AddNodeView)
+		//serverNodeGroup.PUT("/:node_id/view/:view_id", controller.UpdateNodeView)
+		//serverNodeGroup.DELETE("/:node_id/view/:view_id", controller.DeleteNodeView)
+	}
+
+	serverNodeGroup = r.Group("/server/view_jobs")
+	{
+		serverNodeGroup.POST("/get/job", controller.GetNodeJobs)
+		serverNodeGroup.POST("/start/job", controller.StartNodeJobs)
+		serverNodeGroup.POST("/stop/job", controller.StopNodeJobs)
+		//serverNodeGroup.POST("/:node_id/view", controller.AddNodeView)               // 添加节点视图 (Mock 数据)
+		//serverNodeGroup.PUT("/:node_id/view/:view_id", controller.UpdateNodeView)    // 更新节点视图 (Mock 数据)
+		//serverNodeGroup.DELETE("/:node_id/view/:view_id", controller.DeleteNodeView) // 删除节点视图 (Mock 数据)
 	}
 
 	r.NoRoute(func(c *gin.Context) {

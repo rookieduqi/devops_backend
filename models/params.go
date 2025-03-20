@@ -38,3 +38,40 @@ type NodeView struct {
 	LastDuration string `db:"last_duration" json:"lastDuration,omitempty"`
 	CreateTime   string `db:"create_time" json:"createTime,omitempty"`
 }
+
+type RequestData struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Account  string `json:"account"`
+	Password string `json:"password"`
+}
+
+type RequestJobData struct {
+	NodeID   string `form:"nodeId" binding:"required"`
+	ViewID   string `form:"viewId" binding:"required"`
+	Host     string `form:"host" binding:"required"`
+	Port     string `form:"port" binding:"required"`
+	Account  string `form:"account" binding:"required"`
+	Password string `form:"password" binding:"required"`
+}
+
+// Jenkins Job 数据结构
+type JenkinsJob struct {
+	Name  string `json:"name"`
+	URL   string `json:"url"`
+	Color string `json:"color"`
+}
+
+// Jenkins API 响应数据结构
+type JenkinsResponse struct {
+	Jobs []JenkinsJob `json:"jobs"`
+}
+
+type StartJobRequest struct {
+	JobName  string `json:"jobName" binding:"required"`
+	ViewID   string `json:"viewId" binding:"required"`
+	Host     string `json:"host" binding:"required"`
+	Port     string `json:"port" binding:"required"`
+	Account  string `json:"account" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
