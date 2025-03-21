@@ -41,24 +41,32 @@ func SetupRouter(mode string) *gin.Engine {
 	serverNodeGroup = r.Group("/server/node_view")
 	{
 		serverNodeGroup.POST("/get/view", controller.GetNodeViews)
-		//serverNodeGroup.POST("/:node_id/view", controller.AddNodeView)
-		//serverNodeGroup.PUT("/:node_id/view/:view_id", controller.UpdateNodeView)
-		//serverNodeGroup.DELETE("/:node_id/view/:view_id", controller.DeleteNodeView)
+	}
+
+	serverNodeGroup = r.Group("/server/view")
+	{
+		serverNodeGroup.POST("/get", controller.GetNodeViewsT)
 	}
 
 	serverNodeGroup = r.Group("/server/view_jobs")
 	{
 		serverNodeGroup.POST("/get/job", controller.GetNodeJobs)
-		serverNodeGroup.POST("/start/job", controller.StartNodeJobs)
-		serverNodeGroup.POST("/stop/job", controller.StopNodeJobs)
-		//serverNodeGroup.POST("/:node_id/view", controller.AddNodeView)               // 添加节点视图 (Mock 数据)
-		//serverNodeGroup.PUT("/:node_id/view/:view_id", controller.UpdateNodeView)    // 更新节点视图 (Mock 数据)
-		//serverNodeGroup.DELETE("/:node_id/view/:view_id", controller.DeleteNodeView) // 删除节点视图 (Mock 数据)
+		serverNodeGroup.POST("/start/job", controller.StartNodeJobsT)
+		serverNodeGroup.POST("/stop/job", controller.StopNodeJobsT)
+	}
+
+	serverNodeGroup = r.Group("/server/view_console")
+	{
+		serverNodeGroup.POST("/get", controller.GetNodeConsole)
+		serverNodeGroup.POST("/pipeline/overview", controller.GetConsolePipeOverview)
+		serverNodeGroup.POST("/pipeline/console", controller.GetConsolePipeConsole)
+		serverNodeGroup.POST("/build/previous", controller.ConsoleBuildPrevious)
+		serverNodeGroup.DELETE("/build/delete", controller.ConsoleBuildDelete)
 	}
 
 	r.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"msg": "404",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"msg": "接口不存在",
 		})
 	})
 	return r

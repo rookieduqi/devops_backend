@@ -2,14 +2,126 @@ package controller
 
 import (
 	"bluebell/models"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/bndr/gojenkins"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
+
+// 判断是否为文件夹
+func isFolder(job *gojenkins.Job) bool {
+	return job.Raw.Class == "com.cloudbees.hudson.plugins.folder.Folder"
+}
+
+// 递归获取所有 Job 并收集信息
+func getJobsRecursively(ctx context.Context, job *gojenkins.Job, indent string, nodeViews *[]models.NodeViewT) {
+	if isFolder(job) {
+		fmt.Printf("%s📂 [文件夹] %s - URL: %s\n", indent, job.GetName(), job.GetDetails().URL)
+
+		// 获取文件夹内的项目
+		innerJobs, err := job.GetInnerJobs(ctx)
+		if err != nil {
+			fmt.Printf("%s获取子项目失败: %v\n", indent, err)
+			return
+		}
+
+		// 递归获取子项目
+		for _, innerJob := range innerJobs {
+			getJobsRecursively(ctx, innerJob, indent+"  ", nodeViews)
+		}
+	} else {
+		var lastSuccess, lastFailure, lastDuration string
+		*nodeViews = append(*nodeViews, models.NodeViewT{
+			ID:           job.GetName(),
+			NodeID:       job.GetName(),
+			Name:         job.GetName(),
+			Type:         "Job",
+			LastSuccess:  lastSuccess,
+			LastFailure:  lastFailure,
+			LastDuration: lastDuration,
+			CreateTime:   job.GetDetails().URL,
+		})
+	}
+}
+
+// 获取所有 Job，包括子目录
+func getAllJobs(ctx context.Context, jenkins *gojenkins.Jenkins) []models.NodeViewT {
+	var nodeViews []models.NodeViewT
+	jobs, err := jenkins.GetAllJobs(ctx)
+	if err != nil {
+		panic(fmt.Sprintf("获取所有 Job 失败: %v", err))
+	}
+
+	for _, job := range jobs {
+		getJobsRecursively(ctx, job, "", &nodeViews)
+	}
+
+	return nodeViews
+}
+
+// 获取顶层 Job 并区分 Job 与 文件夹
+func getAllJobsT(ctx context.Context, jenkins *gojenkins.Jenkins) ([]models.NodeViewT, error) {
+	jobs, err := jenkins.GetAllJobs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var jobInfos []models.NodeViewT
+
+	for _, job := range jobs {
+		//jobDetails := job.GetDetails()
+		jobInfo := models.NodeViewT{
+			ID:      job.GetName(),
+			NodeID:  job.GetName(),
+			Name:    job.GetName(),
+			Type:    "Job", // 默认类型为 Job
+			Weather: "",
+		}
+		if isFolder(job) {
+			jobInfo.Type = "Folder"
+		}
+		jobInfos = append(jobInfos, jobInfo)
+	}
+	return jobInfos, nil
+}
+
+func GetNodeViewsT(c *gin.Context) {
+	var reqData models.RequestData
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid JSON data"})
+		return
+	}
+
+	ctx := context.Background()
+	// 创建 Jenkins 实例
+	jenkinsURL := fmt.Sprintf("http://%s:%s", reqData.Host, reqData.Port)
+
+	// 创建 Jenkins 实例
+
+	jenkins := gojenkins.CreateJenkins(nil, jenkinsURL, reqData.Account, reqData.Password)
+	_, err := jenkins.Init(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 获取所有 Job 信息
+	//nodeViews := getAllJobs(ctx, jenkins)
+
+	jobInfos, err := getAllJobsT(ctx, jenkins)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取 Job 信息失败"})
+		return
+	}
+
+	// 返回给前端
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": jobInfos})
+}
 
 // 获取节点视图列表 (Mock 数据)
 func GetNodeViews(c *gin.Context) {
@@ -58,6 +170,7 @@ func GetNodeViews(c *gin.Context) {
 	// 解析 JSON 数据
 	var data struct {
 		Jobs []struct {
+			Class               string `json:"_class"`
 			Name                string `json:"name"`
 			LastSuccessfulBuild struct {
 				Timestamp int64 `json:"timestamp"`
@@ -79,6 +192,14 @@ func GetNodeViews(c *gin.Context) {
 	// 转换数据格式，匹配前端需求
 	var nodeViews []models.NodeView
 	for _, job := range data.Jobs {
+		nodeType := "unknown" // 默认类型
+
+		// 根据 `_class` 字段区分类型
+		if strings.Contains(job.Class, "Folder") {
+			nodeType = "folder"
+		} else {
+			nodeType = "job"
+		}
 		nodeViews = append(nodeViews, models.NodeView{
 			ID:           job.Name,
 			NodeID:       "1",  // 示例 Node ID
@@ -88,6 +209,7 @@ func GetNodeViews(c *gin.Context) {
 			LastFailure:  formatTimestamp(job.LastFailedBuild.Timestamp),
 			LastDuration: formatDuration(job.LastBuild.Duration),
 			CreateTime:   time.Now().Format("2006-01-02 15:04:05"),
+			Type:         nodeType,
 		})
 	}
 
