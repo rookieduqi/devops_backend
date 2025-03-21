@@ -90,3 +90,13 @@ type StartJobRequest struct {
 	Account  string `json:"account" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
+
+type StopJobRequest struct {
+	ViewID   string `json:"viewId" binding:"required"`
+	ViewName string `json:"viewName"`
+	NodeId   string `json:"nodeId"`
+	Host     string `json:"host" binding:"required"`
+	Port     string `json:"port" binding:"required"`
+	Account  string `json:"account" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}

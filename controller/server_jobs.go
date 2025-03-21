@@ -201,12 +201,38 @@ func stopBuildByJobLatest(ctx context.Context, jenkins *gojenkins.Jenkins, name 
 	fmt.Println("是否停止：", stopped)
 }
 
+// 取消指定 Job 的最新构建
+func cancelLatestBuild(ctx context.Context, jenkins *gojenkins.Jenkins, folderName string, jobName string) error {
+	// 获取指定目录 (Folder) 下的 Job
+	job, err := jenkins.GetJob(ctx, jobName, folderName)
+	if err != nil {
+		return fmt.Errorf("获取 Job [%s] 失败: %v", jobName, err)
+	}
+
+	// 获取最新构建
+	lastBuild, err := job.GetLastBuild(ctx)
+	if err != nil {
+		return fmt.Errorf("获取 Job [%s] 的最新构建失败: %v", jobName, err)
+	}
+
+	// 停止构建
+	_, err = lastBuild.Stop(ctx)
+	if err != nil {
+		return fmt.Errorf("停止 Job [%s] 的构建失败: %v", jobName, err)
+	}
+
+	fmt.Printf("成功停止 Job [%s] 的最新构建 (构建编号: %d)\n", jobName, lastBuild.GetBuildNumber())
+	return nil
+}
+
 func StopNodeJobsT(c *gin.Context) {
-	var reqData models.StartJobRequest
-	if err := c.ShouldBindQuery(&reqData); err != nil {
+	var reqData models.StopJobRequest
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		zap.L().Error("err", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "参数绑定失败"})
 		return
 	}
+	zap.L().Info("reqData", zap.Any("reqData", reqData))
 
 	ctx := context.Background()
 	// 创建 Jenkins 实例
@@ -221,7 +247,11 @@ func StopNodeJobsT(c *gin.Context) {
 		return
 	}
 
-	stopBuildByJobLatest(ctx, jenkins, reqData.ViewID)
+	if reqData.ViewName != "" {
+		_ = cancelLatestBuild(ctx, jenkins, reqData.ViewID, reqData.ViewName)
+	} else {
+		stopBuildByJobLatest(ctx, jenkins, reqData.ViewID)
+	}
 
 	// 返回数据
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": ""})
