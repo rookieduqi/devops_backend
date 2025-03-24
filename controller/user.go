@@ -45,19 +45,6 @@ func SignUpHandler(c *gin.Context) {
 }
 
 func LoginHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, LoginResponse{
-		Success: true,
-		Data: UserData{
-			Avatar:       "https://avatars.githubusercontent.com/u/52823142",
-			Username:     "admin",
-			Nickname:     "超级管理员",
-			Roles:        []string{"admin"},
-			Permissions:  []string{"*:*:*"},
-			AccessToken:  "token",
-			RefreshToken: "token",
-			Expires:      "2030/10/30 00:00:00",
-		},
-	})
 	// 1.获取请求参数及参数校验
 	p := new(models.ParamLogin)
 	if err := c.ShouldBindJSON(p); err != nil {
