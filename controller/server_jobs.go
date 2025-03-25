@@ -67,6 +67,26 @@ func formatDurationT(ms int64) string {
 	return fmt.Sprintf("%.1f sec", duration.Seconds())
 }
 
+func formatDurationT1(ms int64) string {
+	duration := time.Duration(ms) * time.Millisecond
+	days := int(duration.Hours() / 24)
+	hours := int(duration.Hours()) % 24
+	minutes := int(duration.Minutes()) % 60
+	seconds := int(duration.Seconds()) % 60
+
+	// 按优先级显示：天 > 小时 > 分钟 > 秒
+	if days > 0 {
+		return fmt.Sprintf("%d days %d hr", days, hours)
+	}
+	if hours > 0 {
+		return fmt.Sprintf("%d hr %d min", hours, minutes)
+	}
+	if minutes > 0 {
+		return fmt.Sprintf("%d min %d sec", minutes, seconds)
+	}
+	return fmt.Sprintf("%d sec", seconds)
+}
+
 // 获取指定目录 (Folder) 下的所有 Job
 func getJobsInFolder(ctx context.Context, jenkins *gojenkins.Jenkins, folderName string) ([]models.JenkinsJob, error) {
 	folder, err := jenkins.GetJob(ctx, folderName)
@@ -94,34 +114,31 @@ func getJobsInFolder(ctx context.Context, jenkins *gojenkins.Jenkins, folderName
 			Weather:    getWeatherIconByHealthReport(healthScore),
 			CreateTime: time.Now().Format("2006-01-02 15:04:05"),
 		}
-
-		lastSucess, _ := job.GetLastSuccessfulBuild(ctx)
-		if lastSucess != nil {
-			jobInfo.LastSuccess = fmt.Sprintf("#%d", lastSucess.GetBuildNumber())
-			LastSuccessDuration := int64(lastSucess.GetDuration())
-			jobInfo.LastSuccessDuration = formatDurationT(LastSuccessDuration)
+		lastSuccess, _ := job.GetLastSuccessfulBuild(ctx)
+		if lastSuccess != nil {
+			timeSinceLastSuccess := time.Since(lastSuccess.GetTimestamp())
+			jobInfo.LastSuccess = formatDurationT1(int64(timeSinceLastSuccess.Seconds() * 1000))
+			jobInfo.LastSuccessBuildNumber = fmt.Sprintf("#%d", lastSuccess.GetBuildNumber())
 		} else {
-			jobInfo.LastSuccess = "无"
-			jobInfo.LastSuccessDuration = "无"
+			jobInfo.LastSuccess = "N/A"
 		}
 
 		lastFailed, _ := job.GetLastFailedBuild(ctx)
 		if lastFailed != nil {
-			jobInfo.LastFailure = fmt.Sprintf("#%d", lastFailed.GetBuildNumber())
-			LastFailureDuration := int64(lastFailed.GetDuration())
-			jobInfo.LastFailureDuration = formatDurationT(LastFailureDuration)
+			timeSinceLastFailed := time.Since(lastFailed.GetTimestamp())
+			jobInfo.LastFailure = formatDurationT1(int64(timeSinceLastFailed.Seconds() * 1000))
+			jobInfo.LastFailureBuildNumber = fmt.Sprintf("#%d", lastFailed.GetBuildNumber())
 		} else {
-			jobInfo.LastFailure = "无"
-			jobInfo.LastFailureDuration = "无"
+			jobInfo.LastFailure = "N/A"
 		}
 
 		// 获取上次构建时长
 		lastBuild, _ := job.GetLastBuild(ctx)
 		if lastBuild != nil {
 			LastBuildDuration := int64(lastBuild.GetDuration())
-			jobInfo.LastDuration = formatDurationT(LastBuildDuration)
+			jobInfo.LastDuration = formatDurationT1(LastBuildDuration)
 		} else {
-			jobInfo.LastDuration = "无"
+			jobInfo.LastDuration = "N/A"
 		}
 
 		jobInfos = append(jobInfos, jobInfo)

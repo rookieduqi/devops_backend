@@ -71,16 +71,16 @@ type RequestJobData struct {
 
 // Jenkins Job 数据结构
 type JenkinsJob struct {
-	Name                string `json:"name"`
-	URL                 string `json:"url"`
-	Color               string `json:"color"`
-	Weather             string `json:"weather"`
-	LastSuccess         string `json:"last_success"`
-	LastSuccessDuration string `json:"last_success_duration"`
-	LastFailure         string `json:"last_failure"`
-	LastFailureDuration string `json:"last_failure_duration"`
-	LastDuration        string `json:"last_duration"`
-	CreateTime          string `json:"create_time"`
+	Name                   string `json:"name"`
+	URL                    string `json:"url"`
+	Color                  string `json:"color"`
+	Weather                string `json:"weather"`
+	LastSuccess            string `json:"last_success"`
+	LastSuccessBuildNumber string `json:"last_success_number"`
+	LastFailure            string `json:"last_failure"`
+	LastFailureBuildNumber string `json:"last_failure_number"`
+	LastDuration           string `json:"last_duration"`
+	CreateTime             string `json:"create_time"`
 }
 
 // Jenkins API 响应数据结构
