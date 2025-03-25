@@ -50,7 +50,7 @@ func SetupRouter(mode string) *gin.Engine {
 
 	serverNodeGroup = r.Group("/server/view_jobs")
 	{
-		serverNodeGroup.POST("/get/job", controller.GetNodeJobs)
+		serverNodeGroup.POST("/get/job", controller.GetNodeJobsT)
 		serverNodeGroup.POST("/start/job", controller.StartNodeJobsT)
 		serverNodeGroup.POST("/stop/job", controller.StopNodeJobsT)
 	}

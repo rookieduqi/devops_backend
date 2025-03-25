@@ -13,6 +13,123 @@ import (
 	"time"
 )
 
+// 将 Jenkins 的 color 字段映射为天气图标
+func getWeatherStatus(color string) string {
+	switch color {
+	case "blue", "green":
+		return "☀️ Sunny"
+	case "yellow":
+		return "⛅ Cloudy"
+	case "red":
+		return "⛈️ Storm"
+	case "notbuilt", "grey":
+		return "🌫️ Not Built"
+	case "aborted":
+		return "💨 Windy"
+	case "disabled":
+		return "❌ Disabled"
+	default:
+		return "❓ Unknown"
+	}
+}
+
+// 将 Jenkins 的 Health Score 映射为天气图标
+func getWeatherIconByHealthReport(healthScore int64) string {
+	switch {
+	case healthScore >= 80:
+		return "☀️ Sunny"
+	case healthScore >= 60:
+		return "🌤️ Partly Sunny"
+	case healthScore >= 40:
+		return "🌥️ Cloudy"
+	case healthScore >= 20:
+		return "🌧️ Rain"
+	case healthScore >= 0:
+		return "⛈️ Storm"
+	default:
+		return "❓ Unknown"
+	}
+}
+
+// 时间转换函数 (将毫秒转换为可读的时间格式)
+func formatDurationT(ms int64) string {
+	duration := time.Duration(ms) * time.Millisecond
+	hours := int(duration.Hours())
+	minutes := int(duration.Minutes()) % 60
+	seconds := int(duration.Seconds()) % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%d hr %d min", hours, minutes)
+	}
+	if minutes > 0 {
+		return fmt.Sprintf("%d min %d sec", minutes, seconds)
+	}
+	return fmt.Sprintf("%.1f sec", duration.Seconds())
+}
+
+// 获取指定目录 (Folder) 下的所有 Job
+func getJobsInFolder(ctx context.Context, jenkins *gojenkins.Jenkins, folderName string) ([]models.JenkinsJob, error) {
+	folder, err := jenkins.GetJob(ctx, folderName)
+	if err != nil {
+		return nil, fmt.Errorf("获取目录 [%s] 失败: %v", folderName, err)
+	}
+
+	jobs, err := folder.GetInnerJobs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("获取目录 [%s] 下的 Job 失败: %v", folderName, err)
+	}
+
+	var jobInfos []models.JenkinsJob
+	for _, job := range jobs {
+		// 获取健康评分
+		healthScore := int64(0)
+		if len(job.GetDetails().HealthReport) > 0 {
+			healthScore = job.GetDetails().HealthReport[0].Score
+		}
+		jobInfo := models.JenkinsJob{
+			Name:  job.GetName(),
+			URL:   job.GetDetails().URL,
+			Color: job.GetDetails().Color,
+			//Weather:    getWeatherStatus(job.GetDetails().Color),
+			Weather:    getWeatherIconByHealthReport(healthScore),
+			CreateTime: time.Now().Format("2006-01-02 15:04:05"),
+		}
+
+		lastSucess, _ := job.GetLastSuccessfulBuild(ctx)
+		if lastSucess != nil {
+			jobInfo.LastSuccess = fmt.Sprintf("#%d", lastSucess.GetBuildNumber())
+			LastSuccessDuration := int64(lastSucess.GetDuration())
+			jobInfo.LastSuccessDuration = formatDurationT(LastSuccessDuration)
+		} else {
+			jobInfo.LastSuccess = "无"
+			jobInfo.LastSuccessDuration = "无"
+		}
+
+		lastFailed, _ := job.GetLastFailedBuild(ctx)
+		if lastFailed != nil {
+			jobInfo.LastFailure = fmt.Sprintf("#%d", lastFailed.GetBuildNumber())
+			LastFailureDuration := int64(lastFailed.GetDuration())
+			jobInfo.LastFailureDuration = formatDurationT(LastFailureDuration)
+		} else {
+			jobInfo.LastFailure = "无"
+			jobInfo.LastFailureDuration = "无"
+		}
+
+		// 获取上次构建时长
+		lastBuild, _ := job.GetLastBuild(ctx)
+		if lastBuild != nil {
+			LastBuildDuration := int64(lastBuild.GetDuration())
+			jobInfo.LastDuration = formatDurationT(LastBuildDuration)
+		} else {
+			jobInfo.LastDuration = "无"
+		}
+
+		jobInfos = append(jobInfos, jobInfo)
+	}
+
+	return jobInfos, nil
+}
+
 func GetNodeJobsT(c *gin.Context) {
 	var reqData models.RequestJobData
 	if err := c.ShouldBindQuery(&reqData); err != nil {
@@ -20,51 +137,28 @@ func GetNodeJobsT(c *gin.Context) {
 		return
 	}
 
-	// 构造 Jenkins API 请求 URL
-	jenkinsURL := fmt.Sprintf("http://%s:%s/me/my-views/view/all/job/%s/api/json",
-		reqData.Host, reqData.Port, reqData.ViewID)
+	ctx := context.Background()
+	// 创建 Jenkins 实例
+	jenkinsURL := fmt.Sprintf("http://%s:%s", reqData.Host, reqData.Port)
 
-	// 构造 HTTP 请求
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", jenkinsURL, nil)
+	// 创建 Jenkins 实例
+
+	jenkins := gojenkins.CreateJenkins(nil, jenkinsURL, reqData.Account, reqData.Password)
+	_, err := jenkins.Init(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "构造请求失败"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
 		return
 	}
 
-	// 设置 Basic Auth 认证
-	req.SetBasicAuth(reqData.Account, reqData.Password)
-
-	// 执行请求
-	resp, err := client.Do(req)
+	// 获取 Folder 下的 Jobs
+	jobInfos, err := getJobsInFolder(ctx, jenkins, reqData.ViewID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "请求失败"})
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": fmt.Sprintf("请求失败，状态码：%d", resp.StatusCode)})
-		return
-	}
-
-	// 读取响应数据
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "读取响应失败"})
-		return
-	}
-	//zap.L().Info("body", zap.ByteString("body", body))
-
-	// 解析 JSON 数据
-	var data models.JenkinsResponse
-	if err := json.Unmarshal(body, &data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "JSON 解析失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return
 	}
 
 	// 返回数据
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": data.Jobs})
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": jobInfos})
 }
 
 // 获取 Jenkins View Jobs 数据

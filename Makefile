@@ -1,11 +1,17 @@
 .PHONY: all build run gotool clean help
 
-BINARY="xx"
+# 二进制文件名称
+BINARY := devops
+# 输出目录
+OUTPUT_DIR := build
+
+$(OUTPUT_DIR):
+	@mkdir -p $(OUTPUT_DIR)
 
 all: gotool build
 
-build:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ${BINARY}
+build: $(OUTPUT_DIR)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(OUTPUT_DIR)/$(BINARY)
 
 run:
 	@go run ./main.go conf/config.yaml

@@ -65,26 +65,62 @@ func getAllJobs(ctx context.Context, jenkins *gojenkins.Jenkins) []models.NodeVi
 	return nodeViews
 }
 
+// 获取天气图标
+func getWeatherByColor(color string) string {
+	switch color {
+	case "blue":
+		return "☀️ 晴天 (稳定)"
+	case "yellow":
+		return "⛅ 部分不稳定"
+	case "red":
+		return "🌩️ 雷雨 (失败)"
+	default:
+		return "未知"
+	}
+}
+
 // 获取顶层 Job 并区分 Job 与 文件夹
-func getAllJobsT(ctx context.Context, jenkins *gojenkins.Jenkins) ([]models.NodeViewT, error) {
+func getAllJobsT(ctx context.Context, jenkins *gojenkins.Jenkins) ([]models.NodeView, error) {
 	jobs, err := jenkins.GetAllJobs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var jobInfos []models.NodeViewT
+	var jobInfos []models.NodeView
 
 	for _, job := range jobs {
-		//jobDetails := job.GetDetails()
-		jobInfo := models.NodeViewT{
+		jobDetails := job.GetDetails()
+		jobInfo := models.NodeView{
 			ID:      job.GetName(),
 			NodeID:  job.GetName(),
+			Weather: getWeatherByColor(jobDetails.Color),
 			Name:    job.GetName(),
-			Type:    "Job", // 默认类型为 Job
-			Weather: "",
+			Type:    "job",
 		}
 		if isFolder(job) {
 			jobInfo.Type = "Folder"
 		}
+		// 获取上次成功构建的信息
+		if jobDetails.LastSuccessfulBuild.Number != 0 {
+			lastSuccessfulBuild, err := job.GetBuild(ctx, jobDetails.LastSuccessfulBuild.Number)
+			if err != nil {
+				return nil, fmt.Errorf("获取 Job [%s] 的上次成功构建失败: %v", job.GetName(), err)
+			}
+			jobInfo.LastSuccess = lastSuccessfulBuild.GetTimestamp().Format("2006-01-02 15:04:05")
+			//jobInfo.LastDuration = lastSuccessfulBuild.GetDuration()
+		}
+
+		// 获取上次失败构建的信息
+		if jobDetails.LastFailedBuild.Number != 0 {
+			lastFailedBuild, err := job.GetBuild(ctx, jobDetails.LastFailedBuild.Number)
+			if err != nil {
+				return nil, fmt.Errorf("获取 Job [%s] 的上次失败构建失败: %v", job.GetName(), err)
+			}
+			jobInfo.LastFailure = lastFailedBuild.GetTimestamp().Format("2006-01-02 15:04:05")
+		}
+
+		// 获取创建时间（使用 Job 的 URL 作为创建时间）
+		jobInfo.CreateTime = jobDetails.URL
+
 		jobInfos = append(jobInfos, jobInfo)
 	}
 	return jobInfos, nil
