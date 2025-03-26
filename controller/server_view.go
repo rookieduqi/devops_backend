@@ -138,7 +138,6 @@ func GetNodeViewsT(c *gin.Context) {
 	jenkinsURL := fmt.Sprintf("http://%s:%s", reqData.Host, reqData.Port)
 
 	// 创建 Jenkins 实例
-
 	jenkins := gojenkins.CreateJenkins(nil, jenkinsURL, reqData.Account, reqData.Password)
 	_, err := jenkins.Init(ctx)
 	if err != nil {

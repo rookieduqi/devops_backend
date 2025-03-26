@@ -77,16 +77,43 @@ func ConsoleBuildPrevious(c *gin.Context) {
 		return
 	}
 
-	zap.L().Info("reqData", zap.Any("reqData", reqData))
-	// /job/GMB/job/GmbClient/lastSuccessfulBuild/pipeline-console/allSteps
-	jenkinsURL := fmt.Sprintf("http://%s:%s/job/%s/lastSuccessfulBuild/pipeline-console/allSteps", reqData.Host, reqData.Port, reqData.ViewID)
+	ctx := context.Background()
+	jenkinsURLT := fmt.Sprintf("http://%s:%s", reqData.Host, reqData.Port)
 
-	if reqData.JobName != "" {
-		jenkinsURL = fmt.Sprintf("http://%s:%s/job/%s/job/%s/lastSuccessfulBuild/pipeline-console/allSteps", reqData.Host, reqData.Port, reqData.ViewID, reqData.JobName)
+	// 创建 Jenkins 实例
+	jenkins := gojenkins.CreateJenkins(nil, jenkinsURLT, reqData.Account, reqData.Password)
+	_, err := jenkins.Init(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
 	}
 
-	// 构造 Jenkins API URL
-	//http://172.24.65.29:10001/job/GMB/job/GmbClient/lastBuild/consoleText
+	// 获取指定目录 (Folder) 下的 Job
+	job, err := jenkins.GetJob(ctx, reqData.JobName, reqData.ViewID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 获取最新构建
+	lastBuild, err := job.GetLastBuild(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 打印最新构建信息
+	// http://172.24.65.29:10001/job/GMB/job/GmbClient/43/api/json
+	// http://172.24.65.29:10001/job/test-job/8/api/json
+	buildNumber := lastBuild.GetBuildNumber()
+
+	zap.L().Info("reqData", zap.Any("reqData", reqData))
+	// /job/GMB/job/GmbClient/lastSuccessfulBuild/pipeline-console/allSteps
+	jenkinsURL := fmt.Sprintf("http://%s:%s/job/%s/%d/api/json", reqData.Host, reqData.Port, reqData.ViewID, buildNumber)
+
+	if reqData.JobName != "" {
+		jenkinsURL = fmt.Sprintf("http://%s:%s/job/%s/job/%s/%d/api/json", reqData.Host, reqData.Port, reqData.ViewID, reqData.JobName, buildNumber)
+	}
 
 	// 构造 HTTP 请求
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -130,17 +157,43 @@ func ConsoleBuildNext(c *gin.Context) {
 		return
 	}
 
-	zap.L().Info("reqData", zap.Any("reqData", reqData))
-	// http://172.24.65.29:10001/job/GMB/job/GmbClient/lastBuild/
-	jenkinsURL := "http://172.24.65.29:10001/job/GMB/job/GmbClient/20/"
-	//jenkinsURL := fmt.Sprintf("http://%s:%s/job/%s/lastSuccessfulBuild/pipeline-console/allSteps", reqData.Host, reqData.Port, reqData.ViewID)
-	//
-	//if reqData.JobName != "" {
-	//	jenkinsURL = fmt.Sprintf("http://%s:%s/job/%s/job/%s/lastSuccessfulBuild/pipeline-console/allSteps", reqData.Host, reqData.Port, reqData.ViewID, reqData.JobName)
-	//}
+	ctx := context.Background()
+	jenkinsURLT := fmt.Sprintf("http://%s:%s", reqData.Host, reqData.Port)
 
-	// 构造 Jenkins API URL
-	//http://172.24.65.29:10001/job/GMB/job/GmbClient/lastBuild/consoleText
+	// 创建 Jenkins 实例
+	jenkins := gojenkins.CreateJenkins(nil, jenkinsURLT, reqData.Account, reqData.Password)
+	_, err := jenkins.Init(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 获取指定目录 (Folder) 下的 Job
+	job, err := jenkins.GetJob(ctx, reqData.JobName, reqData.ViewID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 获取最新构建
+	lastBuild, err := job.GetLastBuild(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 打印最新构建信息
+	// http://172.24.65.29:10001/job/GMB/job/GmbClient/43/api/json
+	// http://172.24.65.29:10001/job/test-job/8/api/json
+	buildNumber := lastBuild.GetBuildNumber()
+
+	zap.L().Info("reqData", zap.Any("reqData", reqData))
+	// /job/GMB/job/GmbClient/lastSuccessfulBuild/pipeline-console/allSteps
+	jenkinsURL := fmt.Sprintf("http://%s:%s/job/%s/%d/api/json", reqData.Host, reqData.Port, reqData.ViewID, buildNumber)
+
+	if reqData.JobName != "" {
+		jenkinsURL = fmt.Sprintf("http://%s:%s/job/%s/job/%s/%d/api/json", reqData.Host, reqData.Port, reqData.ViewID, reqData.JobName, buildNumber)
+	}
 
 	// 构造 HTTP 请求
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -297,7 +350,33 @@ func GetNodeConsole(c *gin.Context) {
 	}
 
 	// 构造 Jenkins API URL
-	//http://172.24.65.29:10001/job/GMB/job/GmbClient/lastBuild/consoleText
+
+	ctx := context.Background()
+	jenkinsURLT := fmt.Sprintf("http://%s:%s", reqData.Host, reqData.Port)
+
+	// 创建 Jenkins 实例
+	jenkins := gojenkins.CreateJenkins(nil, jenkinsURLT, reqData.Account, reqData.Password)
+	_, err := jenkins.Init(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+	// 获取指定目录 (Folder) 下的 Job
+	job, err := jenkins.GetJob(ctx, reqData.JobName, reqData.ViewID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 获取最新构建
+	lastBuild, err := job.GetLastBuild(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "初始化 Jenkins 实例失败"})
+		return
+	}
+
+	// 打印最新构建信息
+	buildNumber := lastBuild.GetBuildNumber()
 
 	// 构造 HTTP 请求
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -331,5 +410,11 @@ func GetNodeConsole(c *gin.Context) {
 	}
 	zap.L().Info("body", zap.ByteString("body", body))
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": string(body)})
+	// 返回构建号和 body
+	c.JSON(http.StatusOK, gin.H{
+		"success":     true,
+		"buildNumber": buildNumber,
+		"data":        string(body),
+	})
+	//c.JSON(http.StatusOK, gin.H{"success": true, "data": string(body)})
 }

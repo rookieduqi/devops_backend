@@ -61,6 +61,7 @@ func SetupRouter(mode string) *gin.Engine {
 		serverNodeGroup.POST("/pipeline/overview", controller.GetConsolePipeOverview)
 		serverNodeGroup.POST("/pipeline/console", controller.GetConsolePipeConsole)
 		serverNodeGroup.POST("/build/previous", controller.ConsoleBuildPrevious)
+		serverNodeGroup.POST("/build/next", controller.ConsoleBuildNext)
 		serverNodeGroup.DELETE("/build/delete", controller.ConsoleBuildDelete)
 	}
 
